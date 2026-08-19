@@ -64,7 +64,7 @@ async def receive_custom_text(message: Message, state: FSMContext, bot: Bot) -> 
             message_id=survey_message_id,
             reply_markup=survey_keyboard(selected),
         )
-    await message.answer("Записала ✅ Можешь выбрать ещё варианты или нажать «Готово».")
+    await message.answer("Отлично, спасибо 🤍 Можешь выбрать ещё варианты и нажать «Готово»")
 
 
 @router.callback_query(F.data == "survey_done")
