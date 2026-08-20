@@ -4,6 +4,12 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.texts import OFFER_AGREEMENT_URL, PRIVACY_POLICY_URL, SURVEY_OPTIONS
 
 
+def welcome_keyboard():
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="Далее ➡️", callback_data="welcome_next"))
+    return builder.as_markup()
+
+
 def survey_keyboard(selected: list[str]) -> InlineKeyboardBuilder:
     builder = InlineKeyboardBuilder()
     for code, short_label, _ in SURVEY_OPTIONS:

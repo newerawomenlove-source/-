@@ -4,10 +4,16 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot import db
-from bot.keyboards import post2_keyboard, survey_keyboard
+from bot.keyboards import post2_keyboard, survey_keyboard, welcome_keyboard
 from bot.notify import notify_admin
 from bot.states import SurveyStates
-from bot.texts import POST2_TEXT, SURVEY_CUSTOM_PROMPT, SURVEY_SAVED_TEXT, WELCOME_TEXT
+from bot.texts import (
+    POST2_TEXT,
+    SURVEY_CUSTOM_PROMPT,
+    SURVEY_INTRO_TEXT,
+    SURVEY_SAVED_TEXT,
+    WELCOME_TEXT,
+)
 
 router = Router()
 
@@ -18,7 +24,16 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     user = message.from_user
     await db.upsert_user(user.id, user.username, user.first_name, status="started")
     await db.log_event(user.id, "start")
-    await message.answer(WELCOME_TEXT, reply_markup=survey_keyboard([]))
+    await message.answer(WELCOME_TEXT, reply_markup=welcome_keyboard())
+
+
+@router.callback_query(F.data == "welcome_next")
+async def welcome_next(callback: CallbackQuery) -> None:
+    user = callback.from_user
+    await db.log_event(user.id, "welcome_next_clicked")
+    await callback.message.edit_reply_markup(reply_markup=None)
+    await callback.message.answer(SURVEY_INTRO_TEXT, reply_markup=survey_keyboard([]))
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("survey_toggle:"))
