@@ -2,6 +2,7 @@ create table if not exists public.users (
   tg_user_id bigint primary key,
   username text,
   first_name text,
+  phone_number text,
   status text not null default 'started',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

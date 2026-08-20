@@ -36,6 +36,11 @@ async def update_user_status(tg_user_id: int, status: str) -> None:
     await client.table("users").update({"status": status}).eq("tg_user_id", tg_user_id).execute()
 
 
+async def save_phone_number(tg_user_id: int, phone_number: str) -> None:
+    client = _require_client()
+    await client.table("users").update({"phone_number": phone_number}).eq("tg_user_id", tg_user_id).execute()
+
+
 async def save_survey_answer(tg_user_id: int, selected_options: list[str], custom_text: str | None) -> None:
     client = _require_client()
     await client.table("funnel_answers").insert(

@@ -4,10 +4,11 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot import db
-from bot.keyboards import post2_keyboard, survey_keyboard, welcome_keyboard
+from bot.keyboards import contact_request_keyboard, post2_keyboard, survey_keyboard, welcome_keyboard
 from bot.notify import notify_admin
 from bot.states import SurveyStates
 from bot.texts import (
+    CONTACT_REQUEST_TEXT,
     POST2_TEXT,
     SURVEY_CUSTOM_PROMPT,
     SURVEY_INTRO_TEXT,
@@ -24,6 +25,19 @@ async def cmd_start(message: Message, state: FSMContext) -> None:
     user = message.from_user
     await db.upsert_user(user.id, user.username, user.first_name, status="started")
     await db.log_event(user.id, "start")
+    await state.set_state(SurveyStates.waiting_contact)
+    await message.answer(CONTACT_REQUEST_TEXT, reply_markup=contact_request_keyboard())
+
+
+@router.message(SurveyStates.waiting_contact, F.contact)
+async def receive_contact(message: Message, state: FSMContext) -> None:
+    user = message.from_user
+    if message.contact.user_id != user.id:
+        return
+
+    await db.save_phone_number(user.id, message.contact.phone_number)
+    await db.log_event(user.id, "contact_shared")
+    await state.set_state(None)
     await message.answer(WELCOME_TEXT, reply_markup=welcome_keyboard())
 
 
