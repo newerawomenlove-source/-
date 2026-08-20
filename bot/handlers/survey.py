@@ -1,7 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
 from bot import db
 from bot.keyboards import contact_request_keyboard, post2_keyboard, survey_keyboard, welcome_keyboard
@@ -38,6 +38,7 @@ async def receive_contact(message: Message, state: FSMContext) -> None:
     await db.save_phone_number(user.id, message.contact.phone_number)
     await db.log_event(user.id, "contact_shared")
     await state.set_state(None)
+    await message.answer(CONTACT_REQUEST_TEXT, reply_markup=ReplyKeyboardRemove())
     await message.answer(WELCOME_TEXT, reply_markup=welcome_keyboard())
 
 
