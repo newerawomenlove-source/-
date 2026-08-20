@@ -1,7 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, FSInputFile, Message, ReplyKeyboardRemove
 
 from bot import db
 from bot.keyboards import contact_request_keyboard, post2_keyboard, survey_keyboard, welcome_keyboard
@@ -14,6 +14,7 @@ from bot.texts import (
     SURVEY_INTRO_TEXT,
     SURVEY_SAVED_TEXT,
     WELCOME_TEXT,
+    WELCOME_VIDEO_PATH,
 )
 
 router = Router()
@@ -39,7 +40,11 @@ async def receive_contact(message: Message, state: FSMContext) -> None:
     await db.log_event(user.id, "contact_shared")
     await state.set_state(None)
     await message.answer(CONTACT_REQUEST_TEXT, reply_markup=ReplyKeyboardRemove())
-    await message.answer(WELCOME_TEXT, reply_markup=welcome_keyboard())
+    await message.answer_video(
+        FSInputFile(WELCOME_VIDEO_PATH),
+        caption=WELCOME_TEXT,
+        reply_markup=welcome_keyboard(),
+    )
 
 
 @router.callback_query(F.data == "welcome_next")

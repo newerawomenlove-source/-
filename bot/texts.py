@@ -1,3 +1,7 @@
+from pathlib import Path
+
+WELCOME_VIDEO_PATH = Path(__file__).resolve().parent.parent / "Визуал" / "IMG_1215.MP4"
+
 # (код, короткая подпись для кнопки — лимит Telegram 64 символа, полная формулировка — для текста сообщения)
 SURVEY_OPTIONS = [
     ("relocation", "🏠 Переезд и жизнь с нуля", "Переехала и строю жизнь с нуля на новом месте / планирую это в будущем"),
