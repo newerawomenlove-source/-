@@ -14,7 +14,7 @@ def contact_request_keyboard() -> ReplyKeyboardMarkup:
 
 def welcome_keyboard():
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="Далее ➡️", callback_data="welcome_next"))
+    builder.row(InlineKeyboardButton(text="Продолжить 🤍", callback_data="welcome_next"))
     return builder.as_markup()
 
 
