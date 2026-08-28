@@ -1,7 +1,7 @@
 from aiogram import Bot, F, Router
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, FSInputFile, Message, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, FSInputFile, InputMediaPhoto, Message, ReplyKeyboardRemove
 
 from bot import db
 from bot.keyboards import contact_request_keyboard, post2_keyboard, survey_keyboard, welcome_keyboard
@@ -9,6 +9,8 @@ from bot.notify import notify_admin
 from bot.states import SurveyStates
 from bot.texts import (
     CONTACT_REQUEST_TEXT,
+    POST2_IMAGE_PATHS,
+    POST2_JOIN_PROMPT,
     POST2_TEXT,
     SURVEY_CUSTOM_PROMPT,
     SURVEY_INTRO_TEXT,
@@ -123,6 +125,11 @@ async def survey_done(callback: CallbackQuery, state: FSMContext, bot: Bot) -> N
 
     await callback.message.edit_reply_markup(reply_markup=None)
     await callback.message.answer(SURVEY_SAVED_TEXT)
-    await callback.message.answer(POST2_TEXT, reply_markup=post2_keyboard())
+
+    media = [InputMediaPhoto(media=FSInputFile(path)) for path in POST2_IMAGE_PATHS]
+    media[-1].caption = POST2_TEXT
+    await bot.send_media_group(chat_id=callback.message.chat.id, media=media)
+    await callback.message.answer(POST2_JOIN_PROMPT, reply_markup=post2_keyboard())
+
     await state.clear()
     await callback.answer()
