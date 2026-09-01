@@ -1,74 +1,97 @@
+import json
 from typing import Any
 
-from supabase import AsyncClient, acreate_client
+import asyncpg
 
-from bot.config import SUPABASE_KEY, SUPABASE_URL
+from bot.config import DATABASE_URL
 
-_client: AsyncClient | None = None
+_pool: asyncpg.Pool | None = None
+
+
+async def _init_connection(conn: asyncpg.Connection) -> None:
+    await conn.set_type_codec(
+        "jsonb",
+        encoder=json.dumps,
+        decoder=json.loads,
+        schema="pg_catalog",
+    )
 
 
 async def init_client() -> None:
-    global _client
-    _client = await acreate_client(SUPABASE_URL, SUPABASE_KEY)
+    global _pool
+    _pool = await asyncpg.create_pool(DATABASE_URL, init=_init_connection)
 
 
-def _require_client() -> AsyncClient:
-    if _client is None:
-        raise RuntimeError("Supabase client is not initialized, call init_client() first")
-    return _client
+def _require_pool() -> asyncpg.Pool:
+    if _pool is None:
+        raise RuntimeError("Database pool is not initialized, call init_client() first")
+    return _pool
 
 
 async def upsert_user(tg_user_id: int, username: str | None, first_name: str | None, status: str) -> None:
-    client = _require_client()
-    await client.table("users").upsert(
-        {
-            "tg_user_id": tg_user_id,
-            "username": username,
-            "first_name": first_name,
-            "status": status,
-        },
-        on_conflict="tg_user_id",
-    ).execute()
+    pool = _require_pool()
+    await pool.execute(
+        """
+        insert into users (tg_user_id, username, first_name, status)
+        values ($1, $2, $3, $4)
+        on conflict (tg_user_id) do update
+        set username = excluded.username,
+            first_name = excluded.first_name,
+            status = excluded.status,
+            updated_at = now()
+        """,
+        tg_user_id,
+        username,
+        first_name,
+        status,
+    )
 
 
 async def update_user_status(tg_user_id: int, status: str) -> None:
-    client = _require_client()
-    await client.table("users").update({"status": status}).eq("tg_user_id", tg_user_id).execute()
+    pool = _require_pool()
+    await pool.execute(
+        "update users set status = $1, updated_at = now() where tg_user_id = $2",
+        status,
+        tg_user_id,
+    )
 
 
 async def save_phone_number(tg_user_id: int, phone_number: str) -> None:
-    client = _require_client()
-    await client.table("users").update({"phone_number": phone_number}).eq("tg_user_id", tg_user_id).execute()
+    pool = _require_pool()
+    await pool.execute(
+        "update users set phone_number = $1, updated_at = now() where tg_user_id = $2",
+        phone_number,
+        tg_user_id,
+    )
 
 
 async def save_survey_answer(tg_user_id: int, selected_options: list[str], custom_text: str | None) -> None:
-    client = _require_client()
-    await client.table("funnel_answers").insert(
-        {
-            "tg_user_id": tg_user_id,
-            "selected_options": selected_options,
-            "custom_text": custom_text,
-        }
-    ).execute()
+    pool = _require_pool()
+    await pool.execute(
+        """
+        insert into funnel_answers (tg_user_id, selected_options, custom_text)
+        values ($1, $2, $3)
+        """,
+        tg_user_id,
+        selected_options,
+        custom_text,
+    )
 
 
 async def count_occupied_spots() -> int:
-    client = _require_client()
-    result = (
-        await client.table("users")
-        .select("tg_user_id", count="exact")
-        .in_("status", ["joined", "paid"])
-        .execute()
+    pool = _require_pool()
+    result = await pool.fetchval(
+        "select count(*) from users where status = any($1::text[])",
+        ["joined", "paid"],
     )
-    return result.count or 0
+    return result or 0
 
 
 async def log_event(tg_user_id: int, event_type: str, payload: dict[str, Any] | None = None) -> None:
-    client = _require_client()
-    await client.table("events").insert(
-        {
-            "tg_user_id": tg_user_id,
-            "event_type": event_type,
-            "payload": payload,
-        }
-    ).execute()
+    pool = _require_pool()
+    await pool.execute(
+        "insert into events (tg_user_id, event_type, payload) values ($1, $2, $3)",
+        tg_user_id,
+        event_type,
+        payload,
+    )

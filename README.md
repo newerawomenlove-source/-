@@ -9,7 +9,9 @@ Telegram-бот сценарной воронки: приветствие → о
 
 - Полный сценарий Пост 1 → Пост 2 → Правила → финал, с множественным выбором
   и свободным текстом «Свой вариант».
-- Каждый шаг пишется в Supabase (таблицы `users`, `funnel_answers`, `events`).
+- Каждый шаг пишется в PostgreSQL (таблицы `users`, `funnel_answers`, `events`,
+  схема — в `sql/schema.sql`). База своя, на сервере в Selectel, бот
+  подключается к ней через `DATABASE_URL` (asyncpg).
 - Уведомления команде в Telegram-чат при ответе на опрос и при вступлении
   (если задан `ADMIN_CHAT_ID`; если нет — бот просто не шлёт их, всё
   остальное работает).
@@ -18,10 +20,17 @@ Telegram-бот сценарной воронки: приветствие → о
   `joined`/`paid`) и после лимита шлёт `bot.send_invoice(...)` через провайдера
   ЮKassa. Пока в `.env` не задан `PAYMENT_PROVIDER_TOKEN` — бот пропускает и
   вступивших после лимита бесплатно, но помечает это событием
-  `join_without_payment` в Supabase и уведомлением в админ-чат, чтобы это было
+  `join_without_payment` в базе и уведомлением в админ-чат, чтобы это было
   заметно. Как только получите токен провайдера (BotFather → Payments →
   подключить ЮKassa) — впишите его в `.env`, и оплата включится сама, без
   правок кода.
+- Прокси до `api.telegram.org` (актуально для сервера в РФ, если Telegram
+  напрямую недоступен): задаётся строкой `PROXY_URL` в `.env`, вида
+  `socks5://login:password@host:port` (или `http://...` для HTTP-прокси).
+  Пусто — бот ходит в Telegram напрямую, без прокси.
+- Автоперезапуск при падении и уведомление в `ADMIN_CHAT_ID`, если бот не
+  смог подняться сам — настраивается на сервере через systemd, файлы в
+  `deploy/` (подробности ниже, в разделе «Запуск на сервере»).
 
 ## Что пока не подключено (и где это добавить)
 
@@ -31,33 +40,42 @@ Telegram-бот сценарной воронки: приветствие → о
 2. **Реальные ссылки на политику конфиденциальности и договор оферты.** Сейчас
    в `bot/texts.py` — заглушки `PRIVACY_POLICY_URL` / `OFFER_AGREEMENT_URL`.
 
-## Запуск локально
+## Запуск на сервере (Selectel)
+
+База — обычный PostgreSQL, поднятый на самом сервере, поэтому бот и запускается
+прямо там же (с Мака к базе напрямую не достучаться, `DATABASE_URL` в `.env`
+использует `localhost`).
 
 1. Создать бота через [@BotFather](https://t.me/BotFather), получить токен.
-2. Создать проект в [Supabase](https://supabase.com) (бесплатно), в
-   SQL Editor выполнить содержимое `sql/schema.sql`.
-3. В настройках проекта Supabase (Project Settings → API) скопировать
-   `Project URL` и `service_role` ключ (не `anon`!).
-4. Скопировать `.env.example` в `.env` и заполнить:
+2. На сервере поднять PostgreSQL и выполнить `sql/schema.sql` (например,
+   `psql "$DATABASE_URL" -f sql/schema.sql`).
+3. Заполнить `.env` (пример — в `.env.example`):
    ```
    BOT_TOKEN=токен от BotFather
-   SUPABASE_URL=Project URL
-   SUPABASE_KEY=service_role ключ
-   ADMIN_CHAT_ID=  # можно оставить пустым пока нет админ-чата
+   DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+   ADMIN_CHAT_ID=       # можно оставить пустым пока нет админ-чата
    PAYMENT_PROVIDER_TOKEN=  # можно оставить пустым пока не подключена ЮKassa
+   PROXY_URL=           # можно оставить пустым, если Telegram доступен напрямую
    ```
-5. Установить зависимости и запустить:
+4. Установить зависимости и запустить:
    ```
    python -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    python -m bot.main
    ```
-
-## Деплой на Railway
-
-1. Запушить репозиторий на GitHub, подключить его в Railway (New Project →
-   Deploy from GitHub repo).
-2. Railway подхватит `Procfile` (`worker: python -m bot.main`) — процесс не
-   слушает порт, это фоновый воркер, а не веб-сервис.
-3. Задать те же переменные окружения из `.env` в Railway → Variables.
+5. Для постоянной работы и автоперезапуска — поставить systemd-сервис:
+   ```
+   bash deploy/install.sh
+   ```
+   Это создаст сервис `wnw-bot`, включит его автозапуск при перезагрузке
+   сервера и настроит `Restart=on-failure` — при падении бот сам
+   перезапускается. Если упасть подряд 5 раз за минуту (например, сломалась
+   БД или сервер перезагрузился) — systemd остановит попытки и пришлёт
+   уведомление о падении в `ADMIN_CHAT_ID` (через `deploy/notify_down.sh`).
+   При обычном `systemctl restart` (например, после деплоя новой версии)
+   уведомление не шлётся — оно только про настоящее падение.
+   Проверить статус: `sudo systemctl status wnw-bot`, логи —
+   `sudo journalctl -u wnw-bot -f`.
+   `Procfile` в проекте оставлен на случай переезда на Railway/аналоги, для
+   Selectel он не нужен.

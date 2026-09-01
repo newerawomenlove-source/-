@@ -1,0 +1,7 @@
+[Unit]
+Description=Уведомление в Telegram о падении %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=__PROJECT_DIR__/.env
+ExecStart=__PROJECT_DIR__/deploy/notify_down.sh %i

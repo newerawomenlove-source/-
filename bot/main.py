@@ -3,11 +3,12 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot import db
-from bot.config import BOT_TOKEN
+from bot.config import BOT_TOKEN, PROXY_URL
 from bot.handlers import funnel, survey
 
 
@@ -16,7 +17,8 @@ async def main() -> None:
 
     await db.init_client()
 
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    session = AiohttpSession(proxy=PROXY_URL) if PROXY_URL else None
+    bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(survey.router)
     dp.include_router(funnel.router)
