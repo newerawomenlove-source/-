@@ -87,6 +87,50 @@ async def count_occupied_spots() -> int:
     return result or 0
 
 
+async def create_moderation_item(
+    tg_user_id: int,
+    username: str | None,
+    first_name: str | None,
+    chat_id: int,
+    message_thread_id: int | None,
+    content_type: str,
+    text: str | None,
+    photo_file_id: str | None,
+) -> int:
+    pool = _require_pool()
+    return await pool.fetchval(
+        """
+        insert into moderation_queue
+            (tg_user_id, username, first_name, chat_id, message_thread_id, content_type, text, photo_file_id)
+        values ($1, $2, $3, $4, $5, $6, $7, $8)
+        returning id
+        """,
+        tg_user_id,
+        username,
+        first_name,
+        chat_id,
+        message_thread_id,
+        content_type,
+        text,
+        photo_file_id,
+    )
+
+
+async def get_moderation_item(item_id: int) -> dict[str, Any] | None:
+    pool = _require_pool()
+    row = await pool.fetchrow("select * from moderation_queue where id = $1", item_id)
+    return dict(row) if row else None
+
+
+async def resolve_moderation_item(item_id: int, status: str) -> None:
+    pool = _require_pool()
+    await pool.execute(
+        "update moderation_queue set status = $1, resolved_at = now() where id = $2",
+        status,
+        item_id,
+    )
+
+
 async def log_event(tg_user_id: int, event_type: str, payload: dict[str, Any] | None = None) -> None:
     pool = _require_pool()
     await pool.execute(

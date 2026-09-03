@@ -28,3 +28,16 @@ PROXY_URL = os.environ.get("PROXY_URL") or None
 
 FREE_SPOTS_LIMIT = 1000
 PAID_PRICE_RUB = 990
+
+# Модерация сообщений в темах группы сообщества (например, «Вакансии»,
+# «Анкеты о себе»). Пока сообщество не создано, оставьте все три поля
+# пустыми — модерация автоматически не активируется, остальной бот работает
+# как обычно.
+# ID чата, куда шлются заявки на проверку (с кнопками «Опубликовать»/«Отклонить»).
+MODERATION_CHAT_ID = os.environ.get("MODERATION_CHAT_ID") or None
+# ID группы сообщества, где стоят модерируемые темы.
+COMMUNITY_CHAT_ID = os.environ.get("COMMUNITY_CHAT_ID") or None
+# ID модерируемых тем (message_thread_id) через запятую, например: "12,34".
+MODERATED_TOPIC_IDS = {
+    int(topic_id) for topic_id in os.environ.get("MODERATED_TOPIC_IDS", "").split(",") if topic_id.strip()
+}
