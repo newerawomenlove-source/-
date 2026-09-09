@@ -36,10 +36,18 @@ PAID_PRICE_RUB = 990
 # ID чата, куда шлются заявки на проверку (с кнопками «Опубликовать»/«Отклонить»),
 # общий для всех модерируемых групп.
 MODERATION_CHAT_ID = os.environ.get("MODERATION_CHAT_ID") or None
-# Модерируемые темы — пары "chat_id:message_thread_id" через запятую,
-# например: "-1001111:12,-1002222:34" (можно из разных групп сразу).
-MODERATED_TOPICS: set[tuple[int, int]] = set()
+# Модерируемые чаты/темы через запятую: либо просто "chat_id" (модерируется
+# весь чат — для обычных групп без тем), либо "chat_id:message_thread_id"
+# (модерируется конкретная тема — для групп с включёнными Forum Topics).
+# Например: "-1001111,-1002222:34" — первая группа целиком, во второй —
+# только тема 34.
+MODERATED_TOPICS: set[tuple[int, int | None]] = set()
 for _pair in os.environ.get("MODERATED_TOPICS", "").split(","):
+    _pair = _pair.strip()
+    if not _pair:
+        continue
     if ":" in _pair:
         _chat_id, _thread_id = _pair.split(":", 1)
         MODERATED_TOPICS.add((int(_chat_id), int(_thread_id)))
+    else:
+        MODERATED_TOPICS.add((int(_pair), None))
