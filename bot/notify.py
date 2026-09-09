@@ -1,9 +1,8 @@
 from aiogram import Bot
 
-from bot.config import ADMIN_CHAT_ID
+from bot.config import ADMIN_CHAT_IDS
 
 
 async def notify_admin(bot: Bot, text: str) -> None:
-    if not ADMIN_CHAT_ID:
-        return
-    await bot.send_message(ADMIN_CHAT_ID, text)
+    for chat_id in ADMIN_CHAT_IDS:
+        await bot.send_message(chat_id, text)

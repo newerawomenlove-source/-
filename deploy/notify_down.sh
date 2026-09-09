@@ -12,6 +12,9 @@ if [ -n "${PROXY_URL:-}" ]; then
   PROXY_ARGS=(--proxy "$PROXY_URL")
 fi
 
-curl -s "${PROXY_ARGS[@]}" -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-  -d chat_id="${ADMIN_CHAT_ID}" \
-  -d text="🔴 Бот «Женщины нового времени» упал и не смог перезапуститься сам (${UNIT_NAME}). Нужно проверить сервер."
+IFS=',' read -ra CHAT_IDS <<< "${ADMIN_CHAT_ID}"
+for CHAT_ID in "${CHAT_IDS[@]}"; do
+  curl -s "${PROXY_ARGS[@]}" -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+    -d chat_id="${CHAT_ID}" \
+    -d text="🔴 Бот «Женщины нового времени» упал и не смог перезапуститься сам (${UNIT_NAME}). Нужно проверить сервер."
+done
