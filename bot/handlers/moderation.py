@@ -3,13 +3,13 @@ from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot import db
-from bot.config import COMMUNITY_CHAT_ID, MODERATED_TOPIC_IDS, MODERATION_CHAT_ID
+from bot.config import MODERATED_TOPICS, MODERATION_CHAT_ID
 
 router = Router()
 
-# Модерация активна только если все три настройки заполнены — пока
-# сообщества нет, эти хендлеры просто не регистрируются (см. bot/main.py).
-MODERATION_ENABLED = bool(COMMUNITY_CHAT_ID and MODERATION_CHAT_ID and MODERATED_TOPIC_IDS)
+# Модерация активна только если обе настройки заполнены — пока сообщества
+# нет, эти хендлеры просто не регистрируются (см. bot/main.py).
+MODERATION_ENABLED = bool(MODERATION_CHAT_ID and MODERATED_TOPICS)
 
 
 def _moderation_keyboard(item_id: int):
@@ -21,11 +21,11 @@ def _moderation_keyboard(item_id: int):
     return builder.as_markup()
 
 
-@router.message(
-    F.chat.id == int(COMMUNITY_CHAT_ID or 0),
-    F.message_thread_id.in_(MODERATED_TOPIC_IDS),
-    ~F.from_user.is_bot,
-)
+def _is_moderated_topic(message: Message) -> bool:
+    return (message.chat.id, message.message_thread_id) in MODERATED_TOPICS
+
+
+@router.message(_is_moderated_topic, ~F.from_user.is_bot)
 async def catch_topic_message(message: Message, bot: Bot) -> None:
     user = message.from_user
     content_type = "photo" if message.photo else "text"
@@ -45,7 +45,8 @@ async def catch_topic_message(message: Message, bot: Bot) -> None:
     await bot.send_message(user.id, "Твоё сообщение отправлено на проверку модератору, скоро опубликуем! 🤍")
 
     author = f"@{user.username}" if user.username else (user.first_name or "аноним")
-    caption = f"Заявка от {author} в тему (thread {message.message_thread_id}):\n\n{text or ''}"
+    chat_title = message.chat.title or str(message.chat.id)
+    caption = f"Заявка от {author} — «{chat_title}», тема {message.message_thread_id}:\n\n{text or ''}"
     if photo_file_id:
         await bot.send_photo(MODERATION_CHAT_ID, photo_file_id, caption=caption, reply_markup=_moderation_keyboard(item_id))
     else:

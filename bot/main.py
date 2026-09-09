@@ -9,7 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot import db
 from bot.config import BOT_TOKEN, PROXY_URL
-from bot.handlers import funnel, moderation, survey
+from bot.handlers import debug_ids, funnel, moderation, survey
 
 
 async def main() -> None:
@@ -20,6 +20,7 @@ async def main() -> None:
     session = AiohttpSession(proxy=PROXY_URL) if PROXY_URL else None
     bot = Bot(token=BOT_TOKEN, session=session, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
+    dp.include_router(debug_ids.router)  # TODO: убрать после настройки модерации
     if moderation.MODERATION_ENABLED:
         dp.include_router(moderation.router)
     dp.include_router(survey.router)

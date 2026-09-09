@@ -29,15 +29,17 @@ PROXY_URL = os.environ.get("PROXY_URL") or None
 FREE_SPOTS_LIMIT = 1000
 PAID_PRICE_RUB = 990
 
-# Модерация сообщений в темах группы сообщества (например, «Вакансии»,
-# «Анкеты о себе»). Пока сообщество не создано, оставьте все три поля
-# пустыми — модерация автоматически не активируется, остальной бот работает
-# как обычно.
-# ID чата, куда шлются заявки на проверку (с кнопками «Опубликовать»/«Отклонить»).
+# Модерация сообщений в темах групп сообщества (например, «Вакансии»,
+# «Анкеты о себе») — поддерживает сразу несколько разных групп. Пока
+# сообщество не создано, оставьте оба поля пустыми — модерация автоматически
+# не активируется, остальной бот работает как обычно.
+# ID чата, куда шлются заявки на проверку (с кнопками «Опубликовать»/«Отклонить»),
+# общий для всех модерируемых групп.
 MODERATION_CHAT_ID = os.environ.get("MODERATION_CHAT_ID") or None
-# ID группы сообщества, где стоят модерируемые темы.
-COMMUNITY_CHAT_ID = os.environ.get("COMMUNITY_CHAT_ID") or None
-# ID модерируемых тем (message_thread_id) через запятую, например: "12,34".
-MODERATED_TOPIC_IDS = {
-    int(topic_id) for topic_id in os.environ.get("MODERATED_TOPIC_IDS", "").split(",") if topic_id.strip()
-}
+# Модерируемые темы — пары "chat_id:message_thread_id" через запятую,
+# например: "-1001111:12,-1002222:34" (можно из разных групп сразу).
+MODERATED_TOPICS: set[tuple[int, int]] = set()
+for _pair in os.environ.get("MODERATED_TOPICS", "").split(","):
+    if ":" in _pair:
+        _chat_id, _thread_id = _pair.split(":", 1)
+        MODERATED_TOPICS.add((int(_chat_id), int(_thread_id)))
