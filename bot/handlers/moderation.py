@@ -1,3 +1,5 @@
+from html import escape
+
 from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -25,6 +27,11 @@ def _is_moderated_topic(message: Message) -> bool:
     return (message.chat.id, message.message_thread_id) in MODERATED_TOPICS
 
 
+def _author_link(tg_user_id: int, username: str | None, first_name: str | None) -> str:
+    display_name = escape(f"@{username}" if username else (first_name or "аноним"))
+    return f'<a href="tg://user?id={tg_user_id}">{display_name}</a>'
+
+
 @router.message(_is_moderated_topic, ~F.from_user.is_bot)
 async def catch_topic_message(message: Message, bot: Bot) -> None:
     user = message.from_user
@@ -44,9 +51,9 @@ async def catch_topic_message(message: Message, bot: Bot) -> None:
 
     await bot.send_message(user.id, "Твоё сообщение отправлено на проверку модератору, скоро опубликуем! 🤍")
 
-    author = f"@{user.username}" if user.username else (user.first_name or "аноним")
-    chat_title = message.chat.title or str(message.chat.id)
-    caption = f"Заявка от {author} — «{chat_title}», тема {message.message_thread_id}:\n\n{text or ''}"
+    author_link = _author_link(user.id, user.username, user.first_name)
+    chat_title = escape(message.chat.title or str(message.chat.id))
+    caption = f"Заявка от {author_link} — «{chat_title}», тема {message.message_thread_id}:\n\n{escape(text or '')}"
     if photo_file_id:
         await bot.send_photo(MODERATION_CHAT_ID, photo_file_id, caption=caption, reply_markup=_moderation_keyboard(item_id))
     else:
@@ -65,8 +72,8 @@ async def approve_item(callback: CallbackQuery, bot: Bot) -> None:
         await callback.answer("Заявка уже обработана", show_alert=True)
         return
 
-    author = f"@{item['username']}" if item["username"] else (item["first_name"] or "аноним")
-    published_text = f"{item['text'] or ''}\n\n— {author}"
+    author_link = _author_link(item["tg_user_id"], item["username"], item["first_name"])
+    published_text = f"👤 {author_link}\n\n{escape(item['text'] or '')}"
 
     if item["photo_file_id"]:
         await bot.send_photo(
