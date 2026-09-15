@@ -9,7 +9,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from bot import db
 from bot.config import BOT_TOKEN, PROXY_URL
-from bot.handlers import funnel, moderation, survey
+from bot.handlers import funnel, moderation, screening, survey
+from bot.health import run_health_server
 
 
 async def main() -> None:
@@ -24,8 +25,11 @@ async def main() -> None:
         dp.include_router(moderation.router)
     dp.include_router(survey.router)
     dp.include_router(funnel.router)
+    if screening.SCREENING_ENABLED:
+        dp.include_router(screening.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
+    await run_health_server(bot)
     await dp.start_polling(bot)
 
 
